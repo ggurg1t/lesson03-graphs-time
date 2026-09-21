@@ -13,6 +13,8 @@ INSIGHTS = {
     "graph_01": "",
     "graph_02": "",
     "graph_03": "",
+    "graph_04": "",
+    "graph_05": "",
 }
 
 st.set_page_config(page_title="영화 데이터 그래프 도감 1 - 시간", layout="wide")
@@ -139,6 +141,69 @@ def section_03_daily_total(df: pd.DataFrame) -> None:
     show_insight("graph_03")
 
 
+def section_04_top10_total(df: pd.DataFrame) -> None:
+    st.header("그래프 4. 영화별 일관객 합계 TOP 10")
+
+    # 영화별로 일관객 합계와 10위권에 든 날수를 함께 계산
+    summary = (
+        df.groupby("영화명")
+        .agg(총관객=("일관객", "sum"), 순위권일수=("날짜", "nunique"))
+        .reset_index()
+        .nlargest(10, "총관객")
+        .sort_values("총관객", ascending=False)
+    )
+
+    fig = px.bar(
+        summary,
+        x="총관객",
+        y="영화명",
+        orientation="h",
+        custom_data=["순위권일수"],
+        title="영화별 일관객 합계 TOP 10",
+    )
+    fig.update_traces(
+        hovertemplate=(
+            "%{y}<br>일관객 합계 %{x:,}명"
+            "<br>10위권에 든 날 %{customdata[0]}일<extra></extra>"
+        )
+    )
+    # 관객이 많은 영화가 위에 오도록 y축 순서를 뒤집기
+    fig.update_yaxes(autorange="reversed", title_text="")
+    fig.update_xaxes(title_text="일관객 합계(명)")
+    st.plotly_chart(fig, use_container_width=True)
+
+    show_insight("graph_04")
+
+
+def section_05_month_weekday_heatmap(df: pd.DataFrame) -> None:
+    st.header("그래프 5. 월×요일별 일관객 합계")
+
+    weekday_names = ["월", "화", "수", "목", "금", "토", "일"]  # dayofweek: 월=0 … 일=6
+
+    # 날짜에서 월과 요일을 뽑아 월×요일별 일관객 합계 표(피벗)를 만듦
+    temp = df.assign(월=df["날짜"].dt.month, 요일=df["날짜"].dt.dayofweek)
+    pivot = temp.pivot_table(
+        index="월", columns="요일", values="일관객", aggfunc="sum", fill_value=0
+    )
+    pivot = pivot.reindex(columns=range(7), fill_value=0)  # 월요일 → 일요일 순서
+    pivot.columns = [f"{name}요일" for name in weekday_names]
+    pivot.index = [f"{m}월" for m in pivot.index]
+
+    fig = px.imshow(
+        pivot,
+        color_continuous_scale="Blues",  # 진할수록 관객이 많음
+        aspect="auto",
+        labels=dict(x="요일", y="월", color="일관객 합계(명)"),
+        title="월×요일별 일관객 합계",
+    )
+    fig.update_traces(
+        hovertemplate="%{y} %{x}<br>일관객 합계 %{z:,}명<extra></extra>"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    show_insight("graph_05")
+
+
 def main() -> None:
     st.title("영화 데이터 그래프 도감 1 - 시간")
     st.caption("KOBIS 일별 박스오피스 10위권 · 1년치(365일)")
@@ -154,8 +219,14 @@ def main() -> None:
     section_03_daily_total(df)
     st.divider()
 
+    section_04_top10_total(df)
+    st.divider()
+
+    section_05_month_weekday_heatmap(df)
+    st.divider()
+
     # 다음 그래프는 여기에 이어서 추가하세요.
-    # section_04_...(df)
+    # section_06_...(df)
     # st.divider()
 
 
