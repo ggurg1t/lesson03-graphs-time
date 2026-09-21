@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 DATA_URL = (
@@ -11,6 +12,7 @@ DATA_URL = (
 INSIGHTS = {
     "graph_01": "",
     "graph_02": "",
+    "graph_03": "",
 }
 
 st.set_page_config(page_title="영화 데이터 그래프 도감 1 - 시간", layout="wide")
@@ -99,6 +101,44 @@ def section_02_top5_compare(df: pd.DataFrame) -> None:
     show_insight("graph_02")
 
 
+def section_03_daily_total(df: pd.DataFrame) -> None:
+    st.header("그래프 3. 날짜별 10위권 일관객 합계")
+
+    # 날짜별로 그날 10위권 일관객을 모두 더함
+    daily = df.groupby("날짜", as_index=False)["일관객"].sum()
+    daily = daily.rename(columns={"일관객": "일관객합계"})
+
+    # 합계가 가장 컸던 3일
+    top3 = daily.nlargest(3, "일관객합계").sort_values("일관객합계", ascending=False)
+
+    fig = px.area(daily, x="날짜", y="일관객합계", title="날짜별 10위권 일관객 합계")
+    fig.update_traces(
+        hovertemplate="%{x|%Y-%m-%d}<br>합계 %{y:,}명<extra></extra>"
+    )
+
+    # 최고 3일: 점 + 날짜 글자 (가까운 날짜끼리 글자가 겹치지 않게 위치를 다르게)
+    fig.add_trace(
+        go.Scatter(
+            x=top3["날짜"],
+            y=top3["일관객합계"],
+            mode="markers+text",
+            marker=dict(color="crimson", size=11, line=dict(color="white", width=1.5)),
+            text=top3["날짜"].dt.strftime("%Y-%m-%d"),
+            textposition=["top center", "top right", "top left"][: len(top3)],
+            textfont=dict(color="crimson", size=13),
+            hovertemplate="%{x|%Y-%m-%d}<br>합계 %{y:,}명<extra>최고 3일</extra>",
+            showlegend=False,
+        )
+    )
+
+    fig.update_layout(xaxis_title="날짜", yaxis_title="일관객 합계(명)")
+    # 위쪽 글자가 잘리지 않게 여유 공간
+    fig.update_yaxes(range=[0, daily["일관객합계"].max() * 1.15])
+    st.plotly_chart(fig, use_container_width=True)
+
+    show_insight("graph_03")
+
+
 def main() -> None:
     st.title("영화 데이터 그래프 도감 1 - 시간")
     st.caption("KOBIS 일별 박스오피스 10위권 · 1년치(365일)")
@@ -111,8 +151,11 @@ def main() -> None:
     section_02_top5_compare(df)
     st.divider()
 
+    section_03_daily_total(df)
+    st.divider()
+
     # 다음 그래프는 여기에 이어서 추가하세요.
-    # section_03_...(df)
+    # section_04_...(df)
     # st.divider()
 
 
