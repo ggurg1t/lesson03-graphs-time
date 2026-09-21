@@ -10,6 +10,7 @@ DATA_URL = (
 # 비워 두면 안내 문구가 대신 보여요.
 INSIGHTS = {
     "graph_01": "",
+    "graph_02": "",
 }
 
 st.set_page_config(page_title="영화 데이터 그래프 도감 1 - 시간", layout="wide")
@@ -65,6 +66,39 @@ def section_01_daily_audience(df: pd.DataFrame) -> None:
     show_insight("graph_01")
 
 
+def section_02_top5_compare(df: pd.DataFrame) -> None:
+    st.header("그래프 2. 일관객 합계 상위 5편 비교")
+
+    # 이 기간 일관객 합계가 가장 큰 5편 (큰 순서)
+    top5 = (
+        df.groupby("영화명")["일관객"].sum().sort_values(ascending=False).head(5).index.tolist()
+    )
+    top5_df = df[df["영화명"].isin(top5)]
+
+    fig = px.line(
+        top5_df,
+        x="날짜",
+        y="일관객",
+        color="영화명",
+        category_orders={"영화명": top5},  # 범례를 합계 큰 순서로
+        markers=True,
+        title="일관객 합계 상위 5편 — 날짜별 일관객",
+    )
+    fig.update_traces(
+        hovertemplate="%{x|%Y-%m-%d}<br>일관객 %{y:,}명<extra>%{fullData.name}</extra>"
+    )
+    fig.update_layout(
+        xaxis_title="날짜",
+        yaxis_title="일관객(명)",
+        legend_title_text="영화 (클릭: 켜기/끄기)",
+        hovermode="closest",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.caption("범례의 영화 이름을 한 번 누르면 그 영화가 꺼지고, 더블클릭하면 그 영화만 남아요.")
+    show_insight("graph_02")
+
+
 def main() -> None:
     st.title("영화 데이터 그래프 도감 1 - 시간")
     st.caption("KOBIS 일별 박스오피스 10위권 · 1년치(365일)")
@@ -74,8 +108,11 @@ def main() -> None:
     section_01_daily_audience(df)
     st.divider()
 
+    section_02_top5_compare(df)
+    st.divider()
+
     # 다음 그래프는 여기에 이어서 추가하세요.
-    # section_02_...(df)
+    # section_03_...(df)
     # st.divider()
 
 
